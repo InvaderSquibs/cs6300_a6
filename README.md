@@ -16,10 +16,28 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Create a `.env` file with your OpenAI API key:
+The system defaults to using **LM Studio** (local LLM) at `http://localhost:1234/v1`.
+
+### Option 1: LM Studio (Default - Recommended)
+
+1. Install LM Studio from https://lmstudio.ai
+2. Load a model in LM Studio
+3. Start the local server (usually on port 1234)
+4. That's it! The system will automatically use LM Studio.
+
+### Option 2: OpenAI API
+
+If you prefer OpenAI, create a `.env` file:
 
 ```
 OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### Option 3: Ollama
+
+Set environment variable:
+```
+USE_LOCAL_LLM=true
 ```
 
 ## Usage
@@ -57,17 +75,26 @@ This creates:
 
 See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
 
-### Local LLM Testing
+### Local LLM Testing (Default: LM Studio)
 
-Test with local LLMs (LM Studio or Ollama):
+The system **defaults to LM Studio** for local LLM testing:
 
 ```bash
-# LM Studio (OpenAI-compatible)
+# Test with LM Studio (default)
+python3 test_with_phoenix.py  # Also includes observability
+
+# Or test LM Studio specifically
 python3 test_lm_studio.py
 
-# Ollama
+# Test with Ollama (optional)
 python3 test_local_llm.py
 ```
+
+**LM Studio Setup:**
+1. Install from https://lmstudio.ai
+2. Load a model in LM Studio
+3. Start local server (default port 1234)
+4. Run the test scripts - they'll automatically connect!
 
 See [LOCAL_TESTING.md](LOCAL_TESTING.md) for full instructions.
 
@@ -108,3 +135,26 @@ The system uses a LangGraph workflow with the following nodes:
 - `src/vector_db.py`: ChromaDB integration
 - `src/arxiv_search.py`: Arxiv paper search
 - `src/document_processor.py`: Document chunking utilities
+
+## Testing & Verification
+
+### Vector DB Growth Verification
+
+Test that the vector database grows when new papers are found:
+
+```bash
+# Run growth test (resets DB to empty baseline)
+python3 test_vector_db_growth.py
+
+# Save current DB state as baseline
+python3 test_vector_db_growth.py save
+
+# Reset DB to baseline
+python3 test_vector_db_growth.py reset
+```
+
+The test will:
+1. Reset DB to baseline state (empty or saved)
+2. Run a query that triggers arxiv search
+3. Verify DB count growth
+4. Show before/after document counts

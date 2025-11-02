@@ -66,9 +66,11 @@ class GameTheoryRAG:
                 temperature=0
             )
             print(f"Using OpenAI-compatible local LLM at {local_llm_base_url} with model {local_llm_model}")
+            # Tracing should work automatically with LangChain if env vars are set
         elif use_local_llm:
             try:
                 from langchain_ollama import ChatOllama
+                # Ollama should also support tracing if LANGCHAIN_TRACING_V2 is set
                 self.llm = ChatOllama(model=local_llm_model, temperature=0)
                 print(f"Using local LLM: {local_llm_model}")
             except ImportError:
@@ -82,18 +84,28 @@ class GameTheoryRAG:
                     f"Error: {e}"
                 )
         else:
+            # Default to LM Studio if no API key provided
             self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
             if not self.api_key:
-                raise ValueError(
-                    "Either provide an LLM instance, set use_local_llm=True, provide local_llm_base_url, or provide OPENAI_API_KEY"
+                # Default to LM Studio (local LLM)
+                default_lm_studio_url = "http://localhost:1234/v1"
+                print(f"No OpenAI API key found. Defaulting to LM Studio at {default_lm_studio_url}")
+                from langchain_openai import ChatOpenAI
+                self.llm = ChatOpenAI(
+                    api_key="lm-studio",
+                    base_url=default_lm_studio_url,
+                    model="local-model",
+                    temperature=0
                 )
-            from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(
-                api_key=self.api_key,
-                model="gpt-3.5-turbo",
-                temperature=0
-            )
-            print("Using OpenAI LLM: gpt-3.5-turbo")
+                print(f"Using LM Studio (default local LLM) at {default_lm_studio_url}")
+            else:
+                from langchain_openai import ChatOpenAI
+                self.llm = ChatOpenAI(
+                    api_key=self.api_key,
+                    model="gpt-3.5-turbo",
+                    temperature=0
+                )
+                print("Using OpenAI LLM: gpt-3.5-turbo")
         
         self.vector_db = VectorDBManager()
         self.arxiv_searcher = ArxivSearcher(max_results=max_arxiv_results)
@@ -173,8 +185,11 @@ class GameTheoryRAG:
     
     def _add_to_chroma(self, state: GraphState) -> GraphState:
         """Chunk papers and add them to Chroma DB."""
-        print("Processing and adding papers to Chroma DB...")
+        count_before = self.vector_db.count()
+        print(f"Processing and adding papers to Chroma DB...")
+        print(f"  DB count before adding: {count_before} documents")
         
+        total_chunks_added = 0
         for paper in state["arxiv_papers"]:
             try:
                 # Process paper into chunks
@@ -187,12 +202,18 @@ class GameTheoryRAG:
                 
                 # Add to vector DB
                 self.vector_db.add_documents(documents, metadatas, ids)
+                total_chunks_added += len(chunks)
                 
-                print(f"Added {len(chunks)} chunks from paper: {paper['title'][:50]}...")
+                print(f"  ✓ Added {len(chunks)} chunks from paper: {paper['title'][:50]}...")
             except Exception as e:
-                print(f"Error adding paper to Chroma: {e}")
+                print(f"  ✗ Error adding paper to Chroma: {e}")
                 # Continue with next paper even if one fails
                 continue
+        
+        count_after = self.vector_db.count()
+        print(f"  DB count after adding: {count_after} documents")
+        print(f"  Total chunks added in this run: {total_chunks_added}")
+        print(f"  DB growth: {count_after - count_before} documents")
         
         state["papers_added"] = True
         return state
