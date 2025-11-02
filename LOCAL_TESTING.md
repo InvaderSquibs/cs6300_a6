@@ -1,6 +1,6 @@
 # Local LLM Testing & Visualization Guide
 
-This guide explains how to visualize the agent graph and test the system with local LLMs (Ollama or LM Studio).
+This guide explains how to visualize the agent graph and test the system with local LLMs. **The system defaults to LM Studio** for local LLM usage.
 
 ## Graph Visualization
 
@@ -40,9 +40,9 @@ The graph shows conditional routing with dotted lines (dashed edges) and regular
 
 ## Local LLM Testing
 
-The system supports two local LLM options:
+The system **defaults to LM Studio** for local LLM testing. This is the recommended approach as it provides an OpenAI-compatible endpoint and works out of the box.
 
-### Option 1: LM Studio (Recommended for OpenAI-compatible endpoints)
+### LM Studio (Default - Recommended)
 
 LM Studio provides an OpenAI-compatible API endpoint, making it easy to test with any model.
 
@@ -73,9 +73,9 @@ response = rag.query("What is game theory?")
 print(response)
 ```
 
-### Option 2: Ollama
+### Ollama (Optional Alternative)
 
-Ollama is a lightweight local LLM runner.
+Ollama is an alternative lightweight local LLM runner. LM Studio is preferred by default.
 
 **Setup:**
 1. **Install Ollama**: Visit https://ollama.ai and install
