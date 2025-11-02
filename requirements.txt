@@ -5,3 +5,10 @@ chromadb>=0.4.22
 arxiv>=2.1.0
 tiktoken>=0.5.2
 python-dotenv>=1.0.0
+grandalf>=0.6
+
+# Optional: For local LLM support (Ollama)
+# langchain-ollama>=0.1.0
+
+# Optional: For observability and tracing (Phoenix)
+# arize-phoenix>=3.0.0

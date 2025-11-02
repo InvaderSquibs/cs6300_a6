@@ -24,6 +24,8 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ## Usage
 
+### Basic Usage
+
 Run the example script:
 
 ```bash
@@ -39,6 +41,55 @@ rag = GameTheoryRAG()
 response = rag.query("What is the Nash equilibrium?")
 print(response)
 ```
+
+### Visualization
+
+Generate visualizations of the workflow graph:
+
+```bash
+python3 visualize_graph.py
+```
+
+This creates:
+- `workflow_diagram.mmd` - Mermaid diagram
+- `workflow_diagram.png` - PNG image
+- ASCII visualization in terminal
+
+See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
+
+### Local LLM Testing
+
+Test with local LLMs (LM Studio or Ollama):
+
+```bash
+# LM Studio (OpenAI-compatible)
+python3 test_lm_studio.py
+
+# Ollama
+python3 test_local_llm.py
+```
+
+See [LOCAL_TESTING.md](LOCAL_TESTING.md) for full instructions.
+
+### Observability with Phoenix
+
+Monitor and trace your pipeline with Phoenix:
+
+```bash
+# Install Phoenix
+pip install arize-phoenix
+
+# Run with tracing
+python3 test_with_phoenix.py
+```
+
+Phoenix provides:
+- Real-time workflow tracing
+- LLM call monitoring
+- Performance metrics
+- Cost tracking
+
+See [LOCAL_TESTING.md](LOCAL_TESTING.md#observability-with-phoenix) for details.
 
 ## Architecture
 
