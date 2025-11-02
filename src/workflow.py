@@ -1,9 +1,9 @@
 """
 LangGraph workflow for game theory RAG system.
 """
-from typing import TypedDict, List, Dict, Any, Literal
+from typing import TypedDict, List, Dict, Any, Literal, Optional
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 import os
 from dotenv import load_dotenv
@@ -31,17 +31,69 @@ class GraphState(TypedDict):
 class GameTheoryRAG:
     """LangGraph workflow for game theory RAG system."""
     
-    def __init__(self, openai_api_key: str = None, max_arxiv_results: int = 2):
-        """Initialize the RAG system."""
-        self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OpenAI API key is required")
+    def __init__(
+        self,
+        llm: Optional[BaseChatModel] = None,
+        openai_api_key: str = None,
+        max_arxiv_results: int = 2,
+        use_local_llm: bool = False,
+        local_llm_model: str = "llama3.2",
+        local_llm_base_url: str = None
+    ):
+        """
+        Initialize the RAG system.
         
-        self.llm = ChatOpenAI(
-            api_key=self.api_key,
-            model="gpt-3.5-turbo",
-            temperature=0
-        )
+        Args:
+            llm: Optional pre-configured LLM instance
+            openai_api_key: OpenAI API key (if using OpenAI or OpenAI-compatible endpoint)
+            max_arxiv_results: Maximum number of arxiv papers to fetch
+            use_local_llm: If True, use Ollama local LLM instead of OpenAI
+            local_llm_model: Model name for local LLM (default: llama3.2)
+            local_llm_base_url: Base URL for OpenAI-compatible local LLM (e.g., LM Studio)
+                              If provided, uses OpenAI-compatible endpoint instead of Ollama
+        """
+        # Initialize LLM
+        if llm:
+            self.llm = llm
+        elif local_llm_base_url:
+            # Use OpenAI-compatible endpoint (e.g., LM Studio)
+            from langchain_openai import ChatOpenAI
+            self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY") or "lm-studio"
+            self.llm = ChatOpenAI(
+                api_key=self.api_key,
+                base_url=local_llm_base_url,
+                model=local_llm_model,
+                temperature=0
+            )
+            print(f"Using OpenAI-compatible local LLM at {local_llm_base_url} with model {local_llm_model}")
+        elif use_local_llm:
+            try:
+                from langchain_ollama import ChatOllama
+                self.llm = ChatOllama(model=local_llm_model, temperature=0)
+                print(f"Using local LLM: {local_llm_model}")
+            except ImportError:
+                raise ImportError(
+                    "langchain-ollama is required for local LLM support. "
+                    "Install it with: pip install langchain-ollama"
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to connect to Ollama. Make sure Ollama is running and {local_llm_model} is available. "
+                    f"Error: {e}"
+                )
+        else:
+            self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "Either provide an LLM instance, set use_local_llm=True, provide local_llm_base_url, or provide OPENAI_API_KEY"
+                )
+            from langchain_openai import ChatOpenAI
+            self.llm = ChatOpenAI(
+                api_key=self.api_key,
+                model="gpt-3.5-turbo",
+                temperature=0
+            )
+            print("Using OpenAI LLM: gpt-3.5-turbo")
         
         self.vector_db = VectorDBManager()
         self.arxiv_searcher = ArxivSearcher(max_results=max_arxiv_results)
@@ -181,8 +233,12 @@ class GameTheoryRAG:
         else:
             return "search_arxiv"
     
-    def _build_workflow(self) -> StateGraph:
-        """Build the LangGraph workflow."""
+    def get_graph(self):
+        """Get the uncompiled graph for visualization."""
+        return self._build_workflow_uncompiled()
+    
+    def _build_workflow_uncompiled(self) -> StateGraph:
+        """Build the LangGraph workflow (uncompiled version for visualization)."""
         workflow = StateGraph(GraphState)
         
         # Add nodes
@@ -228,7 +284,20 @@ class GameTheoryRAG:
         # Generate response ends the workflow
         workflow.add_edge("generate_response", END)
         
-        return workflow.compile()
+        return workflow
+    
+    def _build_workflow(self) -> StateGraph:
+        """Build and compile the LangGraph workflow."""
+        compiled = self._build_workflow_uncompiled().compile()
+        
+        # Enable Phoenix/LangSmith tracing if available
+        try:
+            if os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true":
+                print("Tracing enabled (Phoenix/LangSmith compatible)")
+        except Exception:
+            pass  # Tracing is optional
+        
+        return compiled
     
     def query(self, user_query: str) -> str:
         """

@@ -1,0 +1,26 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	check_needs_context(check_needs_context)
+	pull_from_chroma(pull_from_chroma)
+	check_relevance(check_relevance)
+	search_arxiv(search_arxiv)
+	add_to_chroma(add_to_chroma)
+	generate_response(generate_response)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> check_needs_context;
+	add_to_chroma --> pull_from_chroma;
+	check_needs_context -.-> generate_response;
+	check_needs_context -.-> pull_from_chroma;
+	check_relevance -.-> generate_response;
+	check_relevance -.-> search_arxiv;
+	pull_from_chroma --> check_relevance;
+	search_arxiv --> add_to_chroma;
+	generate_response --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
