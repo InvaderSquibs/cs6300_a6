@@ -2,9 +2,9 @@
 LangGraph workflow for game theory RAG system.
 """
 from typing import TypedDict, List, Dict, Any, Literal
-from langgraph.graph import Graph, StateGraph, END
+from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 import os
 from dotenv import load_dotenv
 
@@ -176,7 +176,7 @@ class GameTheoryRAG:
         else:
             return "search_arxiv"
     
-    def _build_workflow(self) -> Graph:
+    def _build_workflow(self) -> StateGraph:
         """Build the LangGraph workflow."""
         workflow = StateGraph(GraphState)
         
