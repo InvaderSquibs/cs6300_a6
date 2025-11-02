@@ -31,7 +31,7 @@ class GraphState(TypedDict):
 class GameTheoryRAG:
     """LangGraph workflow for game theory RAG system."""
     
-    def __init__(self, openai_api_key: str = None):
+    def __init__(self, openai_api_key: str = None, max_arxiv_results: int = 2):
         """Initialize the RAG system."""
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         if not self.api_key:
@@ -44,7 +44,7 @@ class GameTheoryRAG:
         )
         
         self.vector_db = VectorDBManager()
-        self.arxiv_searcher = ArxivSearcher(max_results=1)
+        self.arxiv_searcher = ArxivSearcher(max_results=max_arxiv_results)
         self.doc_processor = DocumentProcessor()
         
         self.workflow = self._build_workflow()
@@ -124,18 +124,23 @@ class GameTheoryRAG:
         print("Processing and adding papers to Chroma DB...")
         
         for paper in state["arxiv_papers"]:
-            # Process paper into chunks
-            chunks = self.doc_processor.process_paper(paper)
-            
-            # Extract data for Chroma
-            documents = [chunk["text"] for chunk in chunks]
-            metadatas = [chunk["metadata"] for chunk in chunks]
-            ids = [chunk["id"] for chunk in chunks]
-            
-            # Add to vector DB
-            self.vector_db.add_documents(documents, metadatas, ids)
-            
-            print(f"Added {len(chunks)} chunks from paper: {paper['title'][:50]}...")
+            try:
+                # Process paper into chunks
+                chunks = self.doc_processor.process_paper(paper)
+                
+                # Extract data for Chroma
+                documents = [chunk["text"] for chunk in chunks]
+                metadatas = [chunk["metadata"] for chunk in chunks]
+                ids = [chunk["id"] for chunk in chunks]
+                
+                # Add to vector DB
+                self.vector_db.add_documents(documents, metadatas, ids)
+                
+                print(f"Added {len(chunks)} chunks from paper: {paper['title'][:50]}...")
+            except Exception as e:
+                print(f"Error adding paper to Chroma: {e}")
+                # Continue with next paper even if one fails
+                continue
         
         state["papers_added"] = True
         return state

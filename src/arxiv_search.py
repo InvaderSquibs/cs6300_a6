@@ -3,7 +3,6 @@ Arxiv search and paper retrieval functionality.
 """
 import arxiv
 from typing import List, Dict, Any, Optional
-import time
 
 
 class ArxivSearcher:

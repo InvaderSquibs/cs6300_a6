@@ -28,6 +28,13 @@ class VectorDBManager:
     
     def add_documents(self, documents: List[str], metadatas: List[Dict[str, Any]], ids: List[str]):
         """Add documents to the vector database."""
+        # Validate that all lists have the same length
+        if not (len(documents) == len(metadatas) == len(ids)):
+            raise ValueError(
+                f"All input lists must have the same length. "
+                f"Got documents={len(documents)}, metadatas={len(metadatas)}, ids={len(ids)}"
+            )
+        
         self.collection.add(
             documents=documents,
             metadatas=metadatas,

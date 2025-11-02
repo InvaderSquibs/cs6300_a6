@@ -66,6 +66,17 @@ class TestVectorDBManager(unittest.TestCase):
         self.assertIn("documents", results)
         # Empty database should return empty results
         self.assertEqual(len(results["documents"][0]), 0)
+    
+    def test_add_documents_validation(self):
+        """Test that add_documents validates input lengths."""
+        documents = ["Doc 1", "Doc 2"]
+        metadatas = [{"source": "test1"}]  # Wrong length
+        ids = ["id1", "id2"]
+        
+        with self.assertRaises(ValueError) as context:
+            self.db_manager.add_documents(documents, metadatas, ids)
+        
+        self.assertIn("same length", str(context.exception))
 
 
 if __name__ == "__main__":
