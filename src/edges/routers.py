@@ -19,48 +19,6 @@ else:
     from src.state import GraphState
 
 
-def route_after_context_check(
-    state: GraphState
-) -> Literal["pull_from_chroma", "generate_response"]:
-    """
-    Route workflow based on whether the query needs game theory context.
-    
-    This router is used after the check_needs_context node to determine
-    the next step. If context is needed, it routes to vector DB retrieval.
-    Otherwise, it routes directly to response generation (skipping context
-    retrieval for non-game-theory queries).
-    
-    Args:
-        state: Current workflow state containing:
-            - needs_context: bool - Flag set by check_needs_context node
-    
-    Returns:
-        Literal string indicating next node:
-            - "pull_from_chroma": If needs_context is True, route to vector
-              DB retrieval to get relevant documents
-            - "generate_response": If needs_context is False, skip context
-              retrieval and generate response directly
-    
-    Example Usage:
-        After check_needs_context sets needs_context=True:
-            Input: {"needs_context": True, ...}
-            Output: "pull_from_chroma"
-        
-        After check_needs_context sets needs_context=False:
-            Input: {"needs_context": False, ...}
-            Output: "generate_response"
-    
-    Note:
-        - Return values must exactly match node names in the workflow graph
-        - This router enables the workflow to handle both game theory and
-          non-game-theory queries efficiently
-    """
-    if state["needs_context"]:
-        return "pull_from_chroma"
-    else:
-        return "generate_response"
-
-
 def route_after_relevance_check(
     state: GraphState
 ) -> Literal["generate_response", "search_arxiv"]:
@@ -100,8 +58,67 @@ def route_after_relevance_check(
         - The workflow loops back after adding papers (add_to_chroma ->
           pull_from_chroma) to re-query with expanded knowledge base
     """
-    if state["relevant_context"]:
+    relevant = state["relevant_context"]
+    chroma_results = state.get("chroma_results", {})
+    num_docs = len(chroma_results.get("documents", [[]])[0]) if chroma_results.get("documents") else 0
+    
+    if relevant:
+        print(f"→ ROUTING: Context is RELEVANT → routing to 'generate_response'")
+        print(f"  Reason: Retrieved {num_docs} document(s) are sufficient to answer the query")
         return "generate_response"
     else:
+        print(f"→ ROUTING: Context is NOT RELEVANT (or missing) → routing to 'search_arxiv'")
+        print(f"  Reason: Retrieved {num_docs} document(s) insufficient, searching arxiv with 'game theory' prefix")
         return "search_arxiv"
 
+
+def route_after_paper_filter(
+    state: GraphState
+) -> Literal["add_to_chroma", "generate_response"]:
+    """
+    Route workflow based on whether game theory papers were found.
+    
+    After filtering arxiv papers for game theory relevance, this router
+    determines the next step. If game theory papers were found, they're
+    added to the vector database. If no game theory papers were found,
+    it routes to response generation with a message indicating the query
+    is not game theory related.
+    
+    Args:
+        state: Current workflow state containing:
+            - arxiv_papers: List[Dict[str, Any]] - Filtered list of papers
+              (may be empty if none were game theory related)
+            - chroma_results: Dict - Results from vector DB query
+    
+    Returns:
+        Literal string indicating next node:
+            - "add_to_chroma": If game theory papers were found, add them
+              to the vector database and loop back to retrieval
+            - "generate_response": If no game theory papers found, generate
+              response indicating query is not game theory related
+    
+    Note:
+        - This router checks if arxiv_papers list has any items
+        - Also checks if vector DB had any results
+        - Only routes to generate_response if both are empty (not game theory)
+    """
+    papers = state.get("arxiv_papers", [])
+    chroma_results = state.get("chroma_results", {})
+    num_docs = len(chroma_results.get("documents", [[]])[0]) if chroma_results.get("documents") else 0
+    papers_seen = state.get("papers_seen", [])
+    
+    if papers:
+        print(f"→ ROUTING: Found {len(papers)} NEW game theory paper(s) → routing to 'add_to_chroma'")
+        print(f"  Reason: Papers will be added to vector DB and workflow will loop back to retrieve them")
+        return "add_to_chroma"
+    else:
+        # No new game theory papers found
+        if num_docs == 0:
+            print(f"→ ROUTING: No game theory papers found (checked {len(papers_seen)} total) AND no vector DB results → routing to 'generate_response'")
+            print(f"  Reason: Query appears to not be game theory related or no relevant papers exist")
+            return "generate_response"
+        else:
+            # Have vector DB results but no new papers to add - use what we have
+            print(f"→ ROUTING: No new game theory papers (already seen {len(papers_seen)}), but have {num_docs} vector DB result(s) → routing to 'generate_response'")
+            print(f"  Reason: Will use existing vector DB results for response (no new papers to add)")
+            return "generate_response"

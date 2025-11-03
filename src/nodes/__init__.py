@@ -31,12 +31,16 @@ from .pdf_nodes import (
     extract_pdf_urls_from_results,
     download_pdfs_from_state
 )
+from .filter_nodes import (
+    filter_game_theory_papers
+)
 
 __all__ = [
     "check_needs_context",
     "check_relevance",
     "pull_from_chroma",
     "search_arxiv",
+    "filter_game_theory_papers",
     "add_to_chroma",
     "generate_response",
     "extract_pdf_urls_from_results",

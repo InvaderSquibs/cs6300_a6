@@ -44,37 +44,55 @@ USE_LOCAL_LLM=true
 
 ### Basic Usage
 
-Run the example script:
+**Option 1: Command-Line Query (Recommended)**
 
+Ask a single question:
 ```bash
-python example.py
+python3 query.py "What is Nash equilibrium?"
 ```
 
-Or use it in your own code:
+Interactive mode:
+```bash
+python3 query.py --interactive
+# or
+python3 query.py -i
+```
+
+**Option 2: Example Script**
+
+```bash
+python3 example.py
+```
+
+Runs a few example queries automatically.
+
+**Option 4: Use in Your Code**
 
 ```python
 from src.workflow import GameTheoryRAG
 
+# Initialize the system
 rag = GameTheoryRAG()
+
+# Ask a question
 response = rag.query("What is the Nash equilibrium?")
+print(response)
+
+# Ask another question
+response = rag.query("Explain the prisoner's dilemma")
 print(response)
 ```
 
-### PDF Download Extension Example
+**Example Questions:**
+- "What is Nash equilibrium?"
+- "Explain the prisoner's dilemma"
+- "What are mixed strategies in game theory?"
+- "How does game theory apply to economics?"
+- "What is a dominant strategy?"
 
-See the PDF download extension in action:
+### PDF Download Extension
 
-```bash
-python example_pdf_download.py
-```
-
-This demonstrates:
-- Basic RAG workflow (backward compatible)
-- Standalone PDF downloader usage
-- Extracting PDFs from vector DB metadata
-- PDF nodes with explicit dependencies
-
-Or use PDF downloader standalone:
+The PDF downloader can be used standalone:
 
 ```python
 from src.pdf_downloader import PDFDownloader
@@ -106,22 +124,28 @@ This creates:
 - `workflow_diagram.png` - PNG image
 - ASCII visualization in terminal
 
-See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
-
-### Local LLM Testing (Default: LM Studio)
-
-The system **defaults to LM Studio** for local LLM testing:
+### Testing & Verification
 
 ```bash
-# Test with LM Studio (default)
-python3 test_with_phoenix.py  # Also includes observability
+# Comprehensive verification
+python3 verify_all_components.py
 
-# Or test LM Studio specifically
-python3 test_lm_studio.py
+# Run test suite
+pytest tests/
 
-# Test with Ollama (optional)
-python3 test_local_llm.py
+# Collect evaluation metrics
+python3 evaluation_metrics.py
 ```
+
+See [LOCAL_TESTING.md](LOCAL_TESTING.md) for details.
+
+### Documentation
+
+- **[PROJECT_REPORT.md](PROJECT_REPORT.md)** - Complete design and evaluation report
+- **[PEAS_ANALYSIS.md](PEAS_ANALYSIS.md)** - PEAS framework analysis
+- **[ENVIRONMENT_AGENT_LOOP.md](ENVIRONMENT_AGENT_LOOP.md)** - Environment-agent loop documentation
+- **[EVALUATION_RESULTS.md](EVALUATION_RESULTS.md)** - Quantitative evaluation metrics
+- **[WORKFLOW.md](WORKFLOW.md)** - Detailed workflow documentation
 
 **LM Studio Setup:**
 1. Install from https://lmstudio.ai

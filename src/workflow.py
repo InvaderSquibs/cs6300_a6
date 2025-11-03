@@ -62,18 +62,18 @@ from src.graph_builder import WorkflowBuilder
 
 # Import nodes
 from src.nodes import (
-    check_needs_context,
     check_relevance,
     pull_from_chroma,
     search_arxiv,
+    filter_game_theory_papers,
     add_to_chroma,
     generate_response
 )
 
 # Import routers
 from src.edges import (
-    route_after_context_check,
-    route_after_relevance_check
+    route_after_relevance_check,
+    route_after_paper_filter
 )
 
 # Load environment variables
@@ -238,12 +238,6 @@ class GameTheoryRAG:
         # Add nodes with automatic dependency injection
         # The builder automatically injects dependencies based on function signatures
         workflow.add_node(
-            "check_needs_context",
-            self.builder.create_node(check_needs_context)
-            # Dependencies: llm (BaseChatModel)
-        )
-        
-        workflow.add_node(
             "pull_from_chroma",
             self.builder.create_node(pull_from_chroma)
             # Dependencies: vector_db (VectorDBManager)
@@ -262,6 +256,12 @@ class GameTheoryRAG:
         )
         
         workflow.add_node(
+            "filter_game_theory_papers",
+            self.builder.create_node(filter_game_theory_papers)
+            # Dependencies: llm (BaseChatModel)
+        )
+        
+        workflow.add_node(
             "add_to_chroma",
             self.builder.create_node(add_to_chroma)
             # Dependencies: vector_db (VectorDBManager), doc_processor (DocumentProcessor)
@@ -273,18 +273,8 @@ class GameTheoryRAG:
             # Dependencies: llm (BaseChatModel)
         )
         
-        # Set entry point
-        workflow.set_entry_point("check_needs_context")
-        
-        # Add conditional edges with routing functions
-        workflow.add_conditional_edges(
-            "check_needs_context",
-            route_after_context_check,
-            {
-                "pull_from_chroma": "pull_from_chroma",
-                "generate_response": "generate_response"
-            }
-        )
+        # Set entry point - always start with vector DB retrieval
+        workflow.set_entry_point("pull_from_chroma")
         
         # After pulling from Chroma, check relevance
         workflow.add_edge("pull_from_chroma", "check_relevance")
@@ -299,8 +289,18 @@ class GameTheoryRAG:
             }
         )
         
-        # After searching arxiv, add to chroma
-        workflow.add_edge("search_arxiv", "add_to_chroma")
+        # After searching arxiv, filter papers for game theory relevance
+        workflow.add_edge("search_arxiv", "filter_game_theory_papers")
+        
+        # After filtering, route based on whether game theory papers were found
+        workflow.add_conditional_edges(
+            "filter_game_theory_papers",
+            route_after_paper_filter,
+            {
+                "add_to_chroma": "add_to_chroma",
+                "generate_response": "generate_response"
+            }
+        )
         
         # After adding to chroma, loop back to pull from chroma
         # This creates a self-improving workflow that re-queries after adding papers
@@ -374,6 +374,7 @@ class GameTheoryRAG:
             "arxiv_papers": [],
             "papers_added": False,
             "downloaded_pdfs": [],
+            "papers_seen": [],
             "final_response": ""
         }
         

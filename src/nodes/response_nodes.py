@@ -80,10 +80,15 @@ def generate_response(
         - System prompt instructs LLM to answer about game theory specifically
         - The user query is included in the prompt to ensure relevance
     """
+    print(f"✓ NODE: generate_response")
+    print(f"  Query: {state['user_query'][:60]}...")
+    
     # Get context from Chroma results
     if state["chroma_results"].get("documents", [[]])[0]:
         docs = state["chroma_results"]["documents"][0]
         context = "\n\n".join(docs[:3])  # Use top 3 documents
+        
+        print(f"  Using context: {len(docs[:3])} document(s), {len(context)} chars")
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a helpful assistant that answers questions about game theory. "
@@ -94,10 +99,22 @@ def generate_response(
         chain = prompt | llm
         response = chain.invoke({"context": context, "query": state["user_query"]})
         state["final_response"] = response.content
+        print(f"  Generated response: {len(response.content)} chars")
     else:
-        # Fallback if no context available
-        state["final_response"] = "I don't have enough information to answer your question about game theory."
+        # Check if we searched arxiv but found no game theory papers
+        arxiv_papers = state.get("arxiv_papers", [])
+        if len(arxiv_papers) == 0 and state.get("user_query"):
+            # No vector DB results AND no game theory papers from arxiv
+            print(f"  No context available and no game theory papers found")
+            state["final_response"] = (
+                "I don't have enough information to answer your question about game theory. "
+                "The query does not appear to be related to game theory, or no relevant "
+                "game theory papers were found."
+            )
+        else:
+            # No context but might have other reasons
+            print(f"  No context available, using fallback message")
+            state["final_response"] = "I don't have enough information to answer your question about game theory."
     
-    print("Generated final response")
     return state
 
