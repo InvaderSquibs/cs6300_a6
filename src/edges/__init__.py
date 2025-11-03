@@ -11,12 +11,12 @@ All routers follow the pattern:
 They return string literals that map to node names in the workflow.
 """
 from .routers import (
-    route_after_context_check,
-    route_after_relevance_check
+    route_after_relevance_check,
+    route_after_paper_filter
 )
 
 __all__ = [
-    "route_after_context_check",
     "route_after_relevance_check",
+    "route_after_paper_filter",
 ]
 

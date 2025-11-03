@@ -78,5 +78,6 @@ class GraphState(TypedDict):
     arxiv_papers: List[Dict[str, Any]]
     papers_added: bool
     downloaded_pdfs: List[str]  # Optional field for PDF download workflows
+    papers_seen: List[str]  # Track paper entry_ids to avoid infinite loops
     final_response: str
 

@@ -49,3 +49,7 @@ example_papers/
 
 # Logs
 *.log
+verification_evidence.log
+
+# Verification/test artifacts
+check_pdfs.py

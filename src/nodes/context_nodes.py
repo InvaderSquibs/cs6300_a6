@@ -71,7 +71,10 @@ def check_needs_context(
     needs_context = "yes" in response.content.lower()
     state["needs_context"] = needs_context
     
-    print(f"Query needs game theory context: {needs_context}")
+    print(f"✓ NODE: check_needs_context")
+    print(f"  Query: {state['user_query'][:60]}...")
+    print(f"  LLM Response: {response.content.strip()}")
+    print(f"  Decision: needs_context = {needs_context}")
     return state
 
 
@@ -146,6 +149,9 @@ def check_relevance(
     relevant = "yes" in response.content.lower()
     state["relevant_context"] = relevant
     
-    print(f"Context is relevant: {relevant}")
+    print(f"✓ NODE: check_relevance")
+    print(f"  Documents evaluated: {len(docs)}")
+    print(f"  LLM Response: {response.content.strip()}")
+    print(f"  Decision: relevant_context = {relevant}")
     return state
 

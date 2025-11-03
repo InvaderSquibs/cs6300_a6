@@ -1,5 +1,10 @@
 """
 Example usage of the Game Theory RAG system.
+
+This demonstrates basic usage patterns. For more examples, see:
+- query.py - Command-line interface
+- verify_all_components.py - Component verification
+- tests/ - Comprehensive test suite
 """
 import os
 from dotenv import load_dotenv
@@ -7,34 +12,31 @@ from src.workflow import GameTheoryRAG
 
 
 def run_example():
-    """Run a simple example of the RAG system."""
+    """Run simple examples of the RAG system."""
     load_dotenv()
     
-    # Initialize
     print("="*60)
-    print("Game Theory RAG System - Example")
+    print("Game Theory RAG System - Examples")
     print("="*60)
     print()
     
     rag = GameTheoryRAG()
     
-    # First query - will search arxiv since DB is empty
-    print("Example 1: Query on empty database")
+    # Example 1: Basic game theory question
+    print("Example 1: Basic game theory question")
     print("-" * 60)
-    response1 = rag.query("What is game theory?")
-    print(f"\nResponse: {response1}\n")
+    response1 = rag.query("What is Nash equilibrium?")
+    print(f"\nResponse: {response1[:200]}...\n")
     
-    # Second query - should use cached data
-    print("\nExample 2: Query with populated database")
+    # Example 2: Related follow-up
+    print("\nExample 2: Related follow-up question")
     print("-" * 60)
     response2 = rag.query("What are the main concepts in game theory?")
-    print(f"\nResponse: {response2}\n")
+    print(f"\nResponse: {response2[:200]}...\n")
     
-    # Non-game-theory query
-    print("\nExample 3: Non-game-theory query")
-    print("-" * 60)
-    response3 = rag.query("How do I bake a cake?")
-    print(f"\nResponse: {response3}\n")
+    print("="*60)
+    print("For more examples, use: python3 query.py")
+    print("="*60)
 
 
 if __name__ == "__main__":

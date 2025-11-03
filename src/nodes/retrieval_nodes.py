@@ -67,14 +67,17 @@ def pull_from_chroma(
         - If database is empty, chroma_results["documents"] will be [[]]
         - Query uses semantic similarity based on embeddings stored in ChromaDB
     """
-    print(f"Querying Chroma DB (contains {vector_db.count()} documents)...")
+    print(f"✓ NODE: pull_from_chroma")
+    print(f"  Query: {state['user_query'][:60]}...")
+    print(f"  Vector DB contains: {vector_db.count()} documents")
     
     results = vector_db.query(state["user_query"], n_results=3)
     state["chroma_results"] = results
     
-    # Log results found
     num_docs = len(results.get("documents", [[]])[0])
-    print(f"Found {num_docs} relevant documents in Chroma")
+    print(f"  Retrieved: {num_docs} document(s)")
+    if num_docs > 0:
+        print(f"  Sample doc length: {len(results.get('documents', [[]])[0][0])} chars")
     
     return state
 
@@ -139,14 +142,25 @@ def search_arxiv(
         - Only metadata is returned; full PDFs are not downloaded here
         - If search fails or returns no results, arxiv_papers will be []
     """
-    print("Searching arxiv for papers on game theory...")
+    print(f"✓ NODE: search_arxiv")
+    print(f"  Query: {state['user_query'][:60]}...")
     
     # Create search query by prefixing with "game theory"
     search_query = f"game theory {state['user_query']}"
+    print(f"  Arxiv search query: {search_query}")
+    
     papers = arxiv_searcher.search_papers(search_query)
     
-    state["arxiv_papers"] = papers
-    print(f"Found {len(papers)} papers on arxiv")
+    # Filter out papers we've already seen to prevent infinite loops
+    papers_seen = state.get("papers_seen", [])
+    new_papers = [p for p in papers if p.get("entry_id") not in papers_seen]
+    
+    state["arxiv_papers"] = new_papers
+    print(f"  Retrieved: {len(papers)} paper(s) from arxiv")
+    print(f"  New papers (not seen before): {len(new_papers)}")
+    if new_papers:
+        for i, paper in enumerate(new_papers[:2], 1):
+            print(f"    Paper {i}: {paper.get('title', 'N/A')[:60]}...")
     
     return state
 
