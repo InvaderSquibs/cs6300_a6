@@ -39,6 +39,11 @@ ENV/
 chroma_db/
 *.db
 
+# PDF Downloads (keep test results, ignore new downloads)
+papers/*.pdf
+!papers/1406.2661v1.pdf  # Keep test artifact
+example_papers/
+
 # Jupyter
 .ipynb_checkpoints/
 

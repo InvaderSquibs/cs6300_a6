@@ -60,6 +60,39 @@ response = rag.query("What is the Nash equilibrium?")
 print(response)
 ```
 
+### PDF Download Extension Example
+
+See the PDF download extension in action:
+
+```bash
+python example_pdf_download.py
+```
+
+This demonstrates:
+- Basic RAG workflow (backward compatible)
+- Standalone PDF downloader usage
+- Extracting PDFs from vector DB metadata
+- PDF nodes with explicit dependencies
+
+Or use PDF downloader standalone:
+
+```python
+from src.pdf_downloader import PDFDownloader
+
+downloader = PDFDownloader()
+pdf_path = downloader.download("http://arxiv.org/pdf/1234.5678.pdf")
+
+# PDFs are saved to ./papers/ directory by default
+# You can specify a custom directory:
+pdf_path = downloader.download(url, download_dir="./my_downloads")
+```
+
+**PDF Storage Location:**
+- Default directory: `./papers/` (in project root)
+- Directory is created automatically if it doesn't exist
+- Filename is extracted from URL (e.g., arxiv ID like `1406.2661v1.pdf`)
+- Full path: `{project_root}/papers/{filename}.pdf`
+
 ### Visualization
 
 Generate visualizations of the workflow graph:
@@ -120,21 +153,143 @@ See [LOCAL_TESTING.md](LOCAL_TESTING.md#observability-with-phoenix) for details.
 
 ## Architecture
 
-The system uses a LangGraph workflow with the following nodes:
+The system uses a modular LangGraph workflow with explicit dependency injection. The architecture is designed for clarity, testability, and extensibility.
 
-1. **check_needs_context**: Determines if query is game theory related
-2. **pull_from_chroma**: Retrieves relevant documents from vector DB
-3. **check_relevance**: Evaluates if retrieved context is relevant
-4. **search_arxiv**: Searches arxiv.org for papers (if no relevant context)
-5. **add_to_chroma**: Processes and stores papers in vector DB
-6. **generate_response**: Creates final answer using context
+### Modular Design
+
+The workflow is organized into distinct modules:
+
+- **Nodes** (`src/nodes/`): Functional node implementations organized by concern
+  - `context_nodes.py`: Context checking and relevance evaluation
+  - `retrieval_nodes.py`: Data retrieval from vector DB and arxiv
+  - `processing_nodes.py`: Document processing and storage
+  - `response_nodes.py`: Response generation
+
+- **Edges** (`src/edges/`): Routing functions for conditional workflow control
+  - `routers.py`: Conditional routing based on state
+
+- **State** (`src/state.py`): GraphState TypedDict defining workflow state
+
+- **Builder** (`src/graph_builder.py`): WorkflowBuilder with automatic dependency injection
+
+### Workflow Nodes
+
+The workflow consists of 6 nodes:
+
+1. **check_needs_context**: Determines if query is game theory related (uses: `llm`)
+2. **pull_from_chroma**: Retrieves relevant documents from vector DB (uses: `vector_db`)
+3. **check_relevance**: Evaluates if retrieved context is relevant (uses: `llm`)
+4. **search_arxiv**: Searches arxiv.org for papers (uses: `arxiv_searcher`)
+5. **add_to_chroma**: Processes and stores papers in vector DB (uses: `vector_db`, `doc_processor`)
+6. **generate_response**: Creates final answer using context (uses: `llm`)
+
+### Dependency Injection
+
+Each node function explicitly declares its dependencies in its signature:
+
+```python
+def add_to_chroma(
+    state: GraphState,
+    vector_db: VectorDBManager,      # Explicit dependency
+    doc_processor: DocumentProcessor  # Explicit dependency
+) -> GraphState:
+    ...
+```
+
+The `WorkflowBuilder` automatically injects dependencies by analyzing function signatures and type hints, making dependencies self-documenting and easy to test.
+
+### Adding New Nodes
+
+To add a new node:
+
+1. Create a function with explicit dependencies:
+```python
+def my_new_node(
+    state: GraphState,
+    vector_db: VectorDBManager,
+    llm: BaseChatModel
+) -> GraphState:
+    """Node that uses vector_db and llm."""
+    # Implementation
+    return state
+```
+
+2. Register the dependency in workflow.py (if new):
+```python
+self.dependencies = {
+    ...
+    "VectorDBManager": self.vector_db,
+}
+```
+
+3. Add to workflow:
+```python
+workflow.add_node(
+    "my_new_node",
+    self.builder.create_node(my_new_node)
+)
+```
+
+The builder automatically injects `vector_db` and `llm` based on type hints!
+
+### Extension Pattern: Adding PDF Download Capability
+
+The architecture demonstrates clean extensibility through the PDF download extension:
+
+**1. Metadata Enhancement** (additive, non-breaking):
+- `pdf_url` is stored in vector DB metadata alongside documents
+- Existing workflow continues to work unchanged
+- New metadata enables new capabilities
+
+**2. Standalone Tool Creation**:
+```python
+# src/pdf_downloader.py - Independent tool
+downloader = PDFDownloader()
+pdf_path = downloader.download("http://arxiv.org/pdf/1234.5678.pdf")
+```
+
+**3. Workflow Branching**:
+Same RAG results can branch to different actions:
+
+```
+Main RAG Path:
+pull_from_chroma → check_relevance → generate_response
+
+PDF Download Path:
+pull_from_chroma → extract_pdf_urls_from_results → download_pdfs
+```
+
+Both paths use the same `chroma_results`, but metadata enables different downstream actions.
+
+**4. Explicit Dependencies**:
+```python
+def extract_pdf_urls_from_results(
+    state: GraphState,
+    pdf_downloader: PDFDownloader  # Clear dependency
+) -> GraphState:
+    # Extract pdf_url from metadata, download PDFs
+    ...
+```
+
+**Key Benefits**:
+- ✓ Backward compatible: Existing workflow unchanged
+- ✓ Tool independence: PDFDownloader usable standalone
+- ✓ Metadata-driven: Vector DB metadata acts as contract
+- ✓ Clean composition: Same results, different actions
+- ✓ Easy testing: Pure functions with explicit dependencies
 
 ## Components
 
-- `src/workflow.py`: Main LangGraph workflow
+- `src/workflow.py`: Main LangGraph workflow orchestrator
+- `src/state.py`: GraphState TypedDict definition
+- `src/nodes/`: Node function implementations
+- `src/edges/`: Routing functions
+- `src/graph_builder.py`: Dependency injection builder
 - `src/vector_db.py`: ChromaDB integration
 - `src/arxiv_search.py`: Arxiv paper search
 - `src/document_processor.py`: Document chunking utilities
+- `src/pdf_downloader.py`: Standalone PDF download tool (optional extension)
+- `src/nodes/pdf_nodes.py`: PDF workflow nodes (optional extension)
 
 ## Testing & Verification
 
